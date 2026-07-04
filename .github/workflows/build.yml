@@ -1,0 +1,50 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-arm64:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build arm64
+      run: make build-arm64
+
+    - name: Verify build
+      run: |
+        test -f build-arm64/MusicPlayer.app/Contents/MacOS/MusicPlayer
+        file build-arm64/MusicPlayer.app/Contents/MacOS/MusicPlayer
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: MusicPlayer-arm64-${{ github.sha }}
+        path: build-arm64/MusicPlayer.app
+        retention-days: 30
+
+  build-x86_64:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build x86_64
+      run: make build-x86_64
+
+    - name: Verify build
+      run: |
+        test -f build-x86_64/MusicPlayer.app/Contents/MacOS/MusicPlayer
+        file build-x86_64/MusicPlayer.app/Contents/MacOS/MusicPlayer
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: MusicPlayer-x86_64-${{ github.sha }}
+        path: build-x86_64/MusicPlayer.app
+        retention-days: 30

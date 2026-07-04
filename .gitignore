@@ -1,0 +1,6 @@
+*.app
+build/
+build-arm64/
+build-x86_64/
+*.zip
+.DS_Store

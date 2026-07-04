@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-arm64:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build arm64
+      run: make build-arm64
+
+    - name: Verify build
+      run: |
+        test -f build-arm64/MusicPlayer.app/Contents/MacOS/MusicPlayer
+        file build-arm64/MusicPlayer.app/Contents/MacOS/MusicPlayer
+        otool -l build-arm64/MusicPlayer.app/Contents/MacOS/MusicPlayer | grep -A3 LC_VERSION_MIN_MACOSX || true
+
+    - name: Package
+      run: cd build-arm64 && zip -r ../MusicPlayer-${{ github.ref_name }}-arm64.zip MusicPlayer.app
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: arm64
+        path: MusicPlayer-${{ github.ref_name }}-arm64.zip
+
+  build-x86_64:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build x86_64
+      run: make build-x86_64
+
+    - name: Verify build
+      run: |
+        test -f build-x86_64/MusicPlayer.app/Contents/MacOS/MusicPlayer
+        file build-x86_64/MusicPlayer.app/Contents/MacOS/MusicPlayer
+        otool -l build-x86_64/MusicPlayer.app/Contents/MacOS/MusicPlayer | grep -A3 LC_VERSION_MIN_MACOSX || true
+
+    - name: Package
+      run: cd build-x86_64 && zip -r ../MusicPlayer-${{ github.ref_name }}-x86_64.zip MusicPlayer.app
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: x86_64
+        path: MusicPlayer-${{ github.ref_name }}-x86_64.zip
+
+  release:
+    needs: [build-arm64, build-x86_64]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          arm64/MusicPlayer-${{ github.ref_name }}-arm64.zip
+          x86_64/MusicPlayer-${{ github.ref_name }}-x86_64.zip
+        body: |
+          ## MusicPlayer ${{ github.ref_name }}
+
+          A native macOS audio player. Zero dependencies, privacy-first, offline-only.
+
+          ### Downloads
+
+          | File | Architecture | Minimum macOS |
+          |---|---|---|
+          | `MusicPlayer-${{ github.ref_name }}-arm64.zip` | Apple Silicon (M1/M2/M3/M4) | macOS 11.0 Big Sur |
+          | `MusicPlayer-${{ github.ref_name }}-x86_64.zip` | Intel 64-bit | macOS 10.13 High Sierra |
+
+          ### Installation
+          1. Download the zip for your architecture
+          2. Unzip the file
+          3. Move `MusicPlayer.app` to your Applications folder
+          4. **Important:** Bypass macOS Gatekeeper (app is not code-signed)
+             - Right-click the app and select "Open", then click "Open" in the dialog
+             - Or run `xattr -cr /Applications/MusicPlayer.app` in Terminal
+
+          ### Usage
+          - Drag & drop audio files onto the window
+          - File → Open (⌘O) to add files or folders
+          - Space = Play/Pause, ←/→ = Seek, ↑/↓ = Volume
+          - Media keys (F7/F8/F9) supported via MPRemoteCommandCenter
+          - Double-click a track in the playlist
+
+          ### Features
+          - Playlist with drag-and-drop support
+          - Play/Pause, Next/Previous, Seek bar, Volume slider
+          - Shuffle (Fisher-Yates) and Repeat (off/all/one)
+          - Metadata display (title, artist, duration)
+          - System media key support (play/pause/next/prev/seek)
+          - Keyboard shortcuts
+          - Zero dependencies — pure Cocoa + AVFoundation + MediaPlayer
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
