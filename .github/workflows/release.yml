@@ -20,18 +20,18 @@ jobs:
 
     - name: Verify build
       run: |
-        test -f build-arm64/MusicPlayer.app/Contents/MacOS/MusicPlayer
-        file build-arm64/MusicPlayer.app/Contents/MacOS/MusicPlayer
-        otool -l build-arm64/MusicPlayer.app/Contents/MacOS/MusicPlayer | grep -A3 LC_VERSION_MIN_MACOSX || true
+        test -f build-arm64/XXS-Audio-Player.app/Contents/MacOS/XXS-Audio-Player
+        file build-arm64/XXS-Audio-Player.app/Contents/MacOS/XXS-Audio-Player
+        otool -l build-arm64/XXS-Audio-Player.app/Contents/MacOS/XXS-Audio-Player | grep -A3 LC_VERSION_MIN_MACOSX || true
 
     - name: Package
-      run: cd build-arm64 && zip -r ../MusicPlayer-${{ github.ref_name }}-arm64.zip MusicPlayer.app
+      run: cd build-arm64 && zip -r ../XXS-Audio-Player-${{ github.ref_name }}-arm64.zip XXS-Audio-Player.app
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: arm64
-        path: MusicPlayer-${{ github.ref_name }}-arm64.zip
+        path: XXS-Audio-Player-${{ github.ref_name }}-arm64.zip
 
   build-x86_64:
     runs-on: macos-latest
@@ -44,18 +44,18 @@ jobs:
 
     - name: Verify build
       run: |
-        test -f build-x86_64/MusicPlayer.app/Contents/MacOS/MusicPlayer
-        file build-x86_64/MusicPlayer.app/Contents/MacOS/MusicPlayer
-        otool -l build-x86_64/MusicPlayer.app/Contents/MacOS/MusicPlayer | grep -A3 LC_VERSION_MIN_MACOSX || true
+        test -f build-x86_64/XXS-Audio-Player.app/Contents/MacOS/XXS-Audio-Player
+        file build-x86_64/XXS-Audio-Player.app/Contents/MacOS/XXS-Audio-Player
+        otool -l build-x86_64/XXS-Audio-Player.app/Contents/MacOS/XXS-Audio-Player | grep -A3 LC_VERSION_MIN_MACOSX || true
 
     - name: Package
-      run: cd build-x86_64 && zip -r ../MusicPlayer-${{ github.ref_name }}-x86_64.zip MusicPlayer.app
+      run: cd build-x86_64 && zip -r ../XXS-Audio-Player-${{ github.ref_name }}-x86_64.zip XXS-Audio-Player.app
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: x86_64
-        path: MusicPlayer-${{ github.ref_name }}-x86_64.zip
+        path: XXS-Audio-Player-${{ github.ref_name }}-x86_64.zip
 
   release:
     needs: [build-arm64, build-x86_64]
@@ -68,10 +68,10 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          arm64/MusicPlayer-${{ github.ref_name }}-arm64.zip
-          x86_64/MusicPlayer-${{ github.ref_name }}-x86_64.zip
+          arm64/XXS-Audio-Player-${{ github.ref_name }}-arm64.zip
+          x86_64/XXS-Audio-Player-${{ github.ref_name }}-x86_64.zip
         body: |
-          ## MusicPlayer ${{ github.ref_name }}
+          ## XXS-Audio-Player ${{ github.ref_name }}
 
           A native macOS audio player. Zero dependencies, privacy-first, offline-only.
 
@@ -79,16 +79,16 @@ jobs:
 
           | File | Architecture | Minimum macOS |
           |---|---|---|
-          | `MusicPlayer-${{ github.ref_name }}-arm64.zip` | Apple Silicon (M1/M2/M3/M4) | macOS 11.0 Big Sur |
-          | `MusicPlayer-${{ github.ref_name }}-x86_64.zip` | Intel 64-bit | macOS 10.13 High Sierra |
+          | `XXS-Audio-Player-${{ github.ref_name }}-arm64.zip` | Apple Silicon (M1/M2/M3/M4) | macOS 11.0 Big Sur |
+          | `XXS-Audio-Player-${{ github.ref_name }}-x86_64.zip` | Intel 64-bit | macOS 10.13 High Sierra |
 
           ### Installation
           1. Download the zip for your architecture
           2. Unzip the file
-          3. Move `MusicPlayer.app` to your Applications folder
+          3. Move `XXS-Audio-Player.app` to your Applications folder
           4. **Important:** Bypass macOS Gatekeeper (app is not code-signed)
              - Right-click the app and select "Open", then click "Open" in the dialog
-             - Or run `xattr -cr /Applications/MusicPlayer.app` in Terminal
+             - Or run `xattr -cr /Applications/XXS-Audio-Player.app` in Terminal
 
           ### Usage
           - Drag & drop audio files onto the window

@@ -3,19 +3,19 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleName</key>
-	<string>MusicPlayer</string>
+	<string>XXS Audio Player</string>
 	<key>CFBundleDisplayName</key>
-	<string>MusicPlayer</string>
+	<string>XXS Audio Player</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.musicplayer.app</string>
+	<string>com.github.stan-kondrat.xxs-audio-player</string>
 	<key>CFBundleVersion</key>
-	<string>1.0.0</string>
+	<string>1.0</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>1.0</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleExecutable</key>
-	<string>MusicPlayer</string>
+	<string>XXS-Audio-Player</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>LSMinimumSystemVersion</key>
@@ -28,6 +28,6 @@
 		<string>https</string>
 	</array>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>MusicPlayer uses media keys for playback control.</string>
+	<string>XXS-Audio-Player uses media keys for playback control.</string>
 </dict>
 </plist>

@@ -1,4 +1,4 @@
-// MusicPlayer — Native macOS audio player
+// XXS-Audio-Player — Native macOS audio player
 // Zero dependencies, privacy-first, offline-only
 
 #import <Cocoa/Cocoa.h>
@@ -89,6 +89,10 @@ static const CGFloat SEPARATOR_H = 1;
 
 // --- Progress timer ---
 static const NSTimeInterval PROGRESS_TIMER_INTERVAL = 0.1;
+
+// --- App identity ---
+static NSString *const APP_NAME    = @"XXS-Audio-Player";
+static NSString *const APP_VERSION = @"1.0";
 
 // --- Defaults (all 8px multiples) ---
 static const float  DEFAULT_VOLUME        = 0.5f;
@@ -938,7 +942,7 @@ static NSArray<Track *> *TracksFromURLs(NSArray<NSURL *> *urls) {
                   NSWindowStyleMaskFullSizeContentView
         backing:NSBackingStoreBuffered defer:NO];
 
-    [self.window setTitle:@""];
+    [self.window setTitle:[NSString stringWithFormat:@"%@ v%@", APP_NAME, APP_VERSION]];
     [self.window setTitlebarAppearsTransparent:YES];
     [self.window setTitleVisibility:NSWindowTitleHidden];
     [self.window setMinSize:NSMakeSize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)];

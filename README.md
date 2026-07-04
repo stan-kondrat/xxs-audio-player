@@ -1,7 +1,7 @@
 # XXS Audio Player — native macOS audio player
 
-[![Build](https://github.com/stan-kondrat/xxs-audo-player/actions/workflows/build.yml/badge.svg)](https://github.com/stan-kondrat/xxs-audo-player/actions/workflows/build.yml)
-[![Release](https://github.com/stan-kondrat/xxs-audo-player/actions/workflows/release.yml/badge.svg)](https://github.com/stan-kondrat/xxs-audo-player/actions/workflows/release.yml)
+[![Build](https://github.com/stan-kondrat/xxs-audio-player/actions/workflows/build.yml/badge.svg)](https://github.com/stan-kondrat/xxs-audio-player/actions/workflows/build.yml)
+[![Release](https://github.com/stan-kondrat/xxs-audio-player/actions/workflows/release.yml/badge.svg)](https://github.com/stan-kondrat/xxs-audio-player/actions/workflows/release.yml)
 
 Zero dependencies, privacy-first, offline-only. Pure Cocoa + AVFoundation.
 
@@ -43,7 +43,7 @@ make run
 Or directly:
 
 ```bash
-./build/MusicPlayer.app/Contents/MacOS/MusicPlayer
+./build/XXS-Audio-Player.app/Contents/MacOS/XXS-Audio-Player
 ```
 
 ## Usage
