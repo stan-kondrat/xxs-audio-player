@@ -6,6 +6,8 @@
 #import <MediaPlayer/MediaPlayer.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "ID3Metadata.h"
+#import "TrackListView.h"
+#import "GlassButton.h"
 
 // ──────────────────────────────────────────────
 // Style Constants — all visual/dimensional values on 8px grid
@@ -19,6 +21,7 @@ static const CGFloat WINDOW_MIN_HEIGHT     = 384; // 48×8
 
 // --- Layout (all 8px multiples) ---
 static const CGFloat LAYOUT_PADDING     = 16; // 2×8
+static const CGFloat LAYOUT_PADDING_TOP = 32; // 4×8
 static const CGFloat LAYOUT_GAP         = 8;  // 1×8
 static const CGFloat CTRL_PANEL_HEIGHT  = 152; // 19×8
 static const CGFloat CTRL_TOP_MARGIN    = 16; // 2×8
@@ -31,25 +34,9 @@ static const CGFloat SEEK_SLIDER_H      = 24; // 3×8
 static const CGFloat TRANSPORT_SECTION_Y = 32; // 4×8
 
 // --- Transport buttons (all 8px multiples) ---
-static const CGFloat BTN_SHUFFLE_W = 32; // 4×8
-static const CGFloat BTN_PREV_W    = 40; // 5×8
-static const CGFloat BTN_PLAY_W    = 40; // 5×8, circular
-static const CGFloat BTN_NEXT_W    = 40; // 5×8
-static const CGFloat BTN_REPEAT_W  = 32; // 4×8
-// --- Transport button heights (all 8px multiples) ---
-static const CGFloat BTN_SHUFFLE_H = 24; // 3×8
-static const CGFloat BTN_PREV_H    = 40; // 5×8
-static const CGFloat BTN_PLAY_H    = 40; // 5×8
-static const CGFloat BTN_NEXT_H    = 40; // 5×8
-static const CGFloat BTN_REPEAT_H  = 24; // 3×8
-// --- Button vertical offsets from btnY baseline ---
-static const CGFloat BTN_PREV_Y_OFFSET   = 4;
-static const CGFloat BTN_PLAY_Y_OFFSET   = 2;
-static const CGFloat BTN_NEXT_Y_OFFSET   = 4;
-// --- Button gaps ---
 static const CGFloat BTN_GAP         = 8;  // 1×8
-static const CGFloat BTN_PILL_CORNER = 8;  // 1×8
-static const CGFloat BUTTON_BORDER_W = 0.5;
+
+// --- Volume (all 8px multiples) ---
 
 // --- Volume (all 8px multiples) ---
 static const CGFloat VOL_SECTION_W      = 128; // 16×8
@@ -62,27 +49,12 @@ static const CGFloat VOL_SLIDER_H       = 24;  // 3×8
 static const CGFloat SLIDER_KNOB_SIZE  = 16;  // 2×8
 static const CGFloat SLIDER_BAR_HEIGHT = 6.0; // visual thickness, kept
 
-// --- Table (all 8px multiples) ---
-static const CGFloat TABLE_ROW_HEIGHT   = 24; // 3×8
-static const CGFloat TABLE_CELL_SPACING = 2;  // visual gap, kept
-static const CGFloat ROW_SEL_INSET_H    = 4;
-static const CGFloat ROW_SEL_INSET_V    = 1;
-static const CGFloat ROW_CORNER_RADIUS  = 8;  // 1×8
-
-// --- Table placeholder (all 8px multiples) ---
-static const CGFloat PLACEHOLDER_PAD    = 16; // 2×8
-static const CGFloat PLACEHOLDER_MARGIN = 40; // 5×8
-
 // --- Scroll view (all 8px multiples) ---
 static const CGFloat SCROLL_INSET_BOTTOM = 16; // 2×8
 
 // --- Panels ---
 static const CGFloat PANEL_CORNER_RADIUS = 12; // kept, visual radius
 static const CGFloat PANEL_BORDER_WIDTH  = 0.5;
-
-// --- ResolutionButton (all 8px multiples) ---
-static const CGFloat RES_BUTTON_W = 24; // 3×8
-static const CGFloat RES_BUTTON_H = 24; // 3×8
 
 // --- Separator ---
 static const CGFloat SEPARATOR_H = 1;
@@ -96,43 +68,18 @@ static NSString *const APP_VERSION = @"1.0";
 
 // --- Defaults (all 8px multiples) ---
 static const float  DEFAULT_VOLUME        = 0.5f;
-static const CGFloat DEFAULT_PLAY_BTN_SIZE = 40; // 5×8
 
 // --- Key / behaviour ---
 static const NSTimeInterval SEEK_STEP          = 5.0;
 static const float          VOLUME_STEP        = 0.05f;
 static const NSTimeInterval PREV_TRACK_THRESH  = 3.0;
-static const NSTimeInterval HOVER_ANIM_DUR     = 0.15;
 
 // --- Glass alpha values (inline NSColor helpers) ---
-#define ALPHA_GLASS_INACTIVE_BG   0.08
 #define ALPHA_GLASS_INACTIVE_BD   0.12
-#define ALPHA_GLASS_HOVER_BG     0.18
-#define ALPHA_GLASS_ACTIVE_BG    0.25
-#define ALPHA_GLASS_ACTIVE_BD    0.40
 #define ALPHA_GLASS_KNOB_NORMAL  0.9
 #define ALPHA_GLASS_TRACK_BG     0.15
-#define ALPHA_GLASS_ROW_HOVER_BG 0.10
 
-// ──────────────────────────────────────────────
-// Track model
-// ──────────────────────────────────────────────
-@interface Track : NSObject
-@property (strong) NSURL *url;
-@property (strong) NSString *title;
-@property (strong) NSString *artist;
-@property (assign) NSTimeInterval duration;
-@end
-
-@implementation Track
-- (NSString *)description { return self.title; }
-- (void)dealloc {
-    [_url release];
-    [_title release];
-    [_artist release];
-    [super dealloc];
-}
-@end
+// Track model is now in Track.h / Track.m
 
 // ──────────────────────────────────────────────
 // Formatting helpers
@@ -146,132 +93,6 @@ static NSString *FormatTime(NSTimeInterval t) {
 // ──────────────────────────────────────────────
 // Liquid Glass UI Components
 // ──────────────────────────────────────────────
-
-// ── GlassButton: layer-backed button with modern pill/rounded style ──
-@interface GlassButton : NSButton
-@property (assign) CGFloat glassCornerRadius;
-@property (nonatomic, assign, getter=isActive) BOOL active;
-@property (strong) NSColor *activeTint;
-@property (strong) NSColor *inactiveTint;
-@end
-
-@implementation GlassButton {
-    NSTrackingArea *_hoverTrackingArea;
-}
-
-- (void)setActive:(BOOL)active {
-    _active = active;
-    [self updateGlassAppearance];
-}
-
-- (void)updateGlassAppearance {
-    [self setWantsLayer:YES];
-    if (self.isActive) {
-        self.layer.backgroundColor = [self.activeTint ?: [NSColor controlAccentColor] colorWithAlphaComponent:ALPHA_GLASS_ACTIVE_BG].CGColor;
-        self.layer.borderColor = [self.activeTint ?: [NSColor controlAccentColor] colorWithAlphaComponent:ALPHA_GLASS_ACTIVE_BD].CGColor;
-    } else {
-        self.layer.backgroundColor = [NSColor colorWithWhite:0.5 alpha:ALPHA_GLASS_INACTIVE_BG].CGColor;
-        self.layer.borderColor = [NSColor colorWithWhite:0.5 alpha:ALPHA_GLASS_INACTIVE_BD].CGColor;
-    }
-}
-
-- (void)viewDidChangeBackingProperties {
-    [super viewDidChangeBackingProperties];
-    [self updateGlassAppearance];
-}
-
-- (void)setActive:(BOOL)active animated:(BOOL)animated {
-    self.active = active;
-}
-
-+ (instancetype)pillButtonWithTitle:(NSString *)title target:(id)target action:(SEL)action {
-    GlassButton *btn = [[self alloc] initWithFrame:NSZeroRect];
-    btn.title = title;
-    btn.target = target;
-    btn.action = action;
-    btn.bordered = NO;
-    btn.bezelStyle = NSBezelStyleRecessed;
-    btn.focusRingType = NSFocusRingTypeNone;
-    btn.glassCornerRadius = BTN_PILL_CORNER;
-    btn.active = NO;
-    btn.inactiveTint = [NSColor labelColor];
-    btn.activeTint = [NSColor controlAccentColor];
-    [btn setWantsLayer:YES];
-    btn.layer.cornerRadius = btn.glassCornerRadius;
-    btn.layer.borderWidth = BUTTON_BORDER_W;
-    btn.layer.masksToBounds = YES;
-    [btn updateGlassAppearance];
-    return btn;
-}
-
-+ (instancetype)circularButtonWithTitle:(NSString *)title size:(CGFloat)size target:(id)target action:(SEL)action {
-    GlassButton *btn = [[self alloc] initWithFrame:NSMakeRect(0, 0, size, size)];
-    btn.title = title;
-    btn.target = target;
-    btn.action = action;
-    btn.bordered = NO;
-    btn.bezelStyle = NSBezelStyleRegularSquare;
-    btn.focusRingType = NSFocusRingTypeNone;
-    btn.glassCornerRadius = size / 2.0;
-    btn.active = NO;
-    btn.inactiveTint = [NSColor labelColor];
-    btn.activeTint = [NSColor controlAccentColor];
-    [btn setWantsLayer:YES];
-    btn.layer.cornerRadius = btn.glassCornerRadius;
-    btn.layer.borderWidth = 0.0;
-    btn.layer.masksToBounds = YES;
-    btn.layer.backgroundColor = [NSColor colorWithWhite:0.5 alpha:ALPHA_GLASS_INACTIVE_BD].CGColor;
-    return btn;
-}
-
-- (void)drawRect:(NSRect)dirtyRect {
-    // Let the layer handle the background; only draw text/glyph
-    [self updateGlassAppearance];
-    [super drawRect:dirtyRect];
-}
-
-- (void)mouseEntered:(NSEvent *)event {
-    [super mouseEntered:event];
-    [[NSCursor pointingHandCursor] set];
-    [NSAnimationContext runAnimationGroup:^(NSAnimationContext *ctx) {
-        ctx.duration = HOVER_ANIM_DUR;
-        CABasicAnimation *anim = [CABasicAnimation animationWithKeyPath:@"backgroundColor"];
-        anim.toValue = (__bridge id)[[NSColor colorWithWhite:0.5 alpha:ALPHA_GLASS_HOVER_BG] CGColor];
-        [self.layer addAnimation:anim forKey:@"hoverIn"];
-        self.layer.backgroundColor = [NSColor colorWithWhite:0.5 alpha:ALPHA_GLASS_HOVER_BG].CGColor;
-    }];
-}
-
-- (void)mouseExited:(NSEvent *)event {
-    [super mouseExited:event];
-    [[NSCursor arrowCursor] set];
-    [NSAnimationContext runAnimationGroup:^(NSAnimationContext *ctx) {
-        ctx.duration = HOVER_ANIM_DUR;
-        [self updateGlassAppearance];
-    }];
-}
-
-// ── Update tracking on layout changes (only our hover area, not NSButton's internal ones) ──
-- (void)updateTrackingAreas {
-    [super updateTrackingAreas];
-    if (_hoverTrackingArea) {
-        [self removeTrackingArea:_hoverTrackingArea];
-        [_hoverTrackingArea release];
-        _hoverTrackingArea = nil;
-    }
-    _hoverTrackingArea = [[NSTrackingArea alloc] initWithRect:self.bounds
-                                                      options:NSTrackingMouseEnteredAndExited | NSTrackingActiveAlways
-                                                        owner:self
-                                                     userInfo:nil];
-    [self addTrackingArea:_hoverTrackingArea];
-}
-
-- (void)dealloc {
-    [_hoverTrackingArea release];
-    [super dealloc];
-}
-
-@end
 
 // ── GlassSliderCell: thin modern slider appearance ──
 @interface GlassSliderCell : NSSliderCell
@@ -377,27 +198,6 @@ static NSString *FormatTime(NSTimeInterval t) {
 }
 @end
 
-// ── CenteredTextFieldCell: vertically centers text in table rows ──
-@interface CenteredTextFieldCell : NSTextFieldCell
-@end
-
-@implementation CenteredTextFieldCell
-- (NSRect)titleRectForBounds:(NSRect)rect {
-    NSSize size = [self cellSizeForBounds:rect];
-    CGFloat y = rect.origin.y + (rect.size.height - size.height) / 2.0;
-    return NSMakeRect(rect.origin.x, y, rect.size.width, size.height);
-}
-
-- (void)drawInteriorWithFrame:(NSRect)cellFrame inView:(NSView *)controlView {
-    NSRect titleRect = [self titleRectForBounds:cellFrame];
-    [super drawInteriorWithFrame:titleRect inView:controlView];
-}
-
-- (NSCellHitResult)hitTestForEvent:(NSEvent *)event inRect:(NSRect)cellFrame ofView:(NSView *)controlView {
-    return NSCellHitTrackableArea;
-}
-@end
-
 // ── GlassSeparator: thin blur-aware separator line ──
 @interface GlassSeparator : NSView
 @end
@@ -409,7 +209,7 @@ static NSString *FormatTime(NSTimeInterval t) {
 }
 @end
 
-// ── GlassBackgroundView: explicit layout callback + drag + hit-test fix ──
+// ── GlassBackgroundView: explicit layout callback + drag support ──
 @interface GlassBackgroundView : NSVisualEffectView
 @property (copy) void (^onLayout)(void);
 @end
@@ -418,14 +218,6 @@ static NSString *FormatTime(NSTimeInterval t) {
 - (void)resizeSubviewsWithOldSize:(NSSize)oldSize {
     [super resizeSubviewsWithOldSize:oldSize];
     if (self.onLayout) self.onLayout();
-}
-- (NSView *)hitTest:(NSPoint)point {
-    for (NSView *sub in [self.subviews reverseObjectEnumerator]) {
-        NSPoint p = [self convertPoint:point toView:sub];
-        NSView *hit = [sub hitTest:p];
-        if (hit) return hit;
-    }
-    return [super hitTest:point];
 }
 - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
     return NSDragOperationCopy;
@@ -439,79 +231,6 @@ static NSString *FormatTime(NSTimeInterval t) {
     }
     return NO;
 }
-@end
-
-// ── Resolution button: compact dynamic button for shuffle/repeat ──
-@interface ResolutionButton : GlassButton
-@end
-
-@implementation ResolutionButton
-- (NSSize)intrinsicContentSize {
-    return NSMakeSize(RES_BUTTON_W, RES_BUTTON_H);
-}
-@end
-
-// ── GlassTableRowView: subtle selection/hover glow for playlist rows ──
-@interface GlassTableRowView : NSTableRowView
-@property (assign) BOOL isHovered;
-@end
-
-@implementation GlassTableRowView {
-    NSTrackingArea *_trackingArea;
-}
-
-- (void)setSelected:(BOOL)selected {
-    [super setSelected:selected];
-    [self setNeedsDisplay:YES];
-}
-
-- (void)drawSelectionInRect:(NSRect)dirtyRect {
-    if (!self.isSelected) return;
-    NSRect r = NSInsetRect(self.bounds, ROW_SEL_INSET_H, ROW_SEL_INSET_V);
-    r.size.height -= 1;
-    NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:r xRadius:ROW_CORNER_RADIUS yRadius:ROW_CORNER_RADIUS];
-    [[NSColor controlAccentColor] setFill];
-    [path fill];
-}
-
-- (void)drawBackgroundInRect:(NSRect)dirtyRect {
-    // Transparent — let the glass panel show through
-}
-
-- (void)updateTrackingAreas {
-    [super updateTrackingAreas];
-    if (_trackingArea) [self removeTrackingArea:_trackingArea];
-    _trackingArea = [[NSTrackingArea alloc] initWithRect:self.bounds
-                                                  options:NSTrackingMouseEnteredAndExited | NSTrackingActiveInActiveApp
-                                                    owner:self
-                                                 userInfo:nil];
-    [self addTrackingArea:_trackingArea];
-}
-
-- (void)mouseEntered:(NSEvent *)event {
-    [super mouseEntered:event];
-    self.isHovered = YES;
-    [self setNeedsDisplay:YES];
-}
-
-- (void)mouseExited:(NSEvent *)event {
-    [super mouseExited:event];
-    self.isHovered = NO;
-    [self setNeedsDisplay:YES];
-}
-
-- (void)drawRect:(NSRect)dirtyRect {
-    [self drawBackgroundInRect:dirtyRect];
-    if (self.isHovered && !self.isSelected) {
-        NSRect r = NSInsetRect(self.bounds, ROW_SEL_INSET_H, ROW_SEL_INSET_V);
-        r.size.height -= 1;
-        NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:r xRadius:ROW_CORNER_RADIUS yRadius:ROW_CORNER_RADIUS];
-        [[NSColor colorWithWhite:0.5 alpha:ALPHA_GLASS_ROW_HOVER_BG] setFill];
-        [path fill];
-    }
-    [self drawSelectionInRect:dirtyRect];
-}
-
 @end
 
 static BOOL IsAudioURL(NSURL *url) {
@@ -692,20 +411,18 @@ static NSArray<Track *> *TracksFromURLs(NSArray<NSURL *> *urls) {
 // ──────────────────────────────────────────────
 // App Delegate — UI, playlist, controls
 // ──────────────────────────────────────────────
-@interface AppDelegate : NSObject <NSApplicationDelegate, NSTableViewDataSource, NSTableViewDelegate>
+@interface AppDelegate : NSObject <NSApplicationDelegate>
 
 // Window
 @property (strong) NSWindow *window;
 
-// Playlist table
-@property (strong) NSTableView *tableView;
-@property (strong) NSScrollView *tableScrollView;
+// Playlist
 @property (strong) NSMutableArray<Track *> *tracks;
 
 // Player
 @property (strong) PlayerController *playerController;
 
-// Controls (GlassButton subclass)
+// Controls (GlassButton)
 @property (strong) GlassButton *playPauseButton;
 @property (strong) GlassButton *prevButton;
 @property (strong) GlassButton *nextButton;
@@ -724,7 +441,9 @@ static NSArray<Track *> *TracksFromURLs(NSArray<NSURL *> *urls) {
 
 // Glass panels for explicit layout
 @property (strong) NSVisualEffectView *controlPanel;
-@property (strong) NSVisualEffectView *playlistPanel;
+@property (strong) NSVisualEffectView *trackListPanel;
+@property (strong) TrackListView *trackListView;
+@property (strong) NSScrollView *trackListScrollView;
 
 // State
 @property (assign) NSInteger currentIndex;
@@ -733,7 +452,6 @@ static NSArray<Track *> *TracksFromURLs(NSArray<NSURL *> *urls) {
 @property (strong) NSMutableArray *playHistory; // for previous-track
 @property (assign) BOOL isUpdatingSeek;
 @property (strong) NSArray *shuffledOrder;
-@property (strong) NSTextField *placeholderLabel;
 
 @end
 
@@ -895,10 +613,12 @@ static NSArray<Track *> *TracksFromURLs(NSArray<NSURL *> *urls) {
     self.durationLabel.frame = NSMakeRect(cw - pad - TIME_LABEL_W, y + (SEEK_SLIDER_H - 16) / 2, TIME_LABEL_W, 16);
     self.seekSlider.frame = NSMakeRect(pad + TIME_LABEL_W + 6, y, cw - 2*pad - TIME_LABEL_W*2 - 12, SEEK_SLIDER_H);
 
-    // Transport buttons (centered row) + Volume on the right
+    // Transport buttons (uniform GlassButton row)
     y -= TRANSPORT_SECTION_Y;
-    const CGFloat btnW[] = {BTN_SHUFFLE_W, BTN_PREV_W, BTN_PLAY_W, BTN_NEXT_W, BTN_REPEAT_W};
-    CGFloat totalW = btnW[0]+btnW[1]+btnW[2]+btnW[3]+btnW[4] + 4*BTN_GAP;
+    const CGFloat BTN_W = 36;
+    const CGFloat BTN_H = 36;
+    const CGFloat BTN_COUNT = 5;
+    CGFloat totalW = BTN_COUNT * BTN_W + (BTN_COUNT - 1) * BTN_GAP;
     CGFloat btnY = y;
 
     // Volume on the right of the transport row
@@ -910,25 +630,21 @@ static NSArray<Track *> *TracksFromURLs(NSArray<NSURL *> *urls) {
     // Re-center transport buttons to account for volume section
     CGFloat btnAreaW = volRightX - pad - 8;
     CGFloat btnX = pad + (btnAreaW - totalW) / 2.0;
-    self.shuffleButton.frame = NSMakeRect(btnX, btnY, btnW[0], BTN_SHUFFLE_H); btnX += btnW[0] + BTN_GAP;
-    self.prevButton.frame    = NSMakeRect(btnX, btnY - BTN_PREV_Y_OFFSET, btnW[1], BTN_PREV_H); btnX += btnW[1] + BTN_GAP;
-    self.playPauseButton.frame = NSMakeRect(btnX, btnY - BTN_PLAY_Y_OFFSET, btnW[2], BTN_PLAY_H); btnX += btnW[2] + BTN_GAP;
-    self.nextButton.frame    = NSMakeRect(btnX, btnY - BTN_NEXT_Y_OFFSET, btnW[3], BTN_NEXT_H); btnX += btnW[3] + BTN_GAP;
-    self.repeatButton.frame  = NSMakeRect(btnX, btnY, btnW[4], BTN_REPEAT_H);
+    self.shuffleButton.frame    = NSMakeRect(btnX, btnY, BTN_W, BTN_H); btnX += BTN_W + BTN_GAP;
+    self.prevButton.frame       = NSMakeRect(btnX, btnY, BTN_W, BTN_H); btnX += BTN_W + BTN_GAP;
+    self.playPauseButton.frame  = NSMakeRect(btnX, btnY, BTN_W, BTN_H); btnX += BTN_W + BTN_GAP;
+    self.nextButton.frame       = NSMakeRect(btnX, btnY, BTN_W, BTN_H); btnX += BTN_W + BTN_GAP;
+    self.repeatButton.frame     = NSMakeRect(btnX, btnY, BTN_W, BTN_H);
 
-    // ── Playlist fills remaining top area ──
+    // ── Playlist area (top) — single full-width panel ──
     CGFloat plTop = pad + ctrlH + gap;
-    self.playlistPanel.frame = NSMakeRect(pad, plTop, W - 2*pad, H - plTop - pad);
-    self.tableScrollView.frame = self.playlistPanel.bounds;
+    CGFloat plH = H - plTop - LAYOUT_PADDING_TOP;
 
-    // Center placeholder label in playlist panel
-    if (self.placeholderLabel) {
-        CGSize ps = [self.placeholderLabel sizeThatFits:NSMakeSize(CGFLOAT_MAX, CGFLOAT_MAX)];
-        CGFloat pw = MIN(ps.width + PLACEHOLDER_PAD, self.playlistPanel.bounds.size.width - PLACEHOLDER_MARGIN);
-        self.placeholderLabel.frame = NSMakeRect((self.playlistPanel.bounds.size.width - pw) / 2.0,
-                                                  (self.playlistPanel.bounds.size.height - ps.height) / 2.0,
-                                                  pw, ps.height);
-    }
+    self.trackListPanel.frame = NSMakeRect(pad, plTop, W - 2*pad, plH);
+    self.trackListScrollView.frame = self.trackListPanel.bounds;
+    self.trackListView.frame = NSMakeRect(0, 0, NSWidth(self.trackListScrollView.bounds),
+                                           MAX(NSHeight(self.trackListView.frame),
+                                               NSHeight(self.trackListScrollView.bounds)));
 }
 
 - (void)setupWindow {
@@ -1000,27 +716,41 @@ static NSArray<Track *> *TracksFromURLs(NSArray<NSURL *> *urls) {
     [self.durationLabel setAlignment:NSTextAlignmentLeft];
     [self.controlPanel addSubview:self.durationLabel];
 
-    // Transport buttons
-    self.shuffleButton = [GlassButton pillButtonWithTitle:@"🔀" target:self action:@selector(toggleShuffle:)];
-    [self.shuffleButton setFont:[NSFont systemFontOfSize:13]];
+    // Transport buttons (GlassButton)
+    self.shuffleButton = [[[GlassButton alloc] initWithFrame:NSZeroRect] autorelease];
+    self.shuffleButton.emoji = @"🔀";
+    self.shuffleButton.toolTip = @"Shuffle";
+    self.shuffleButton.target = self;
+    self.shuffleButton.action = @selector(toggleShuffle:);
     [self.controlPanel addSubview:self.shuffleButton];
 
-    self.prevButton = [GlassButton pillButtonWithTitle:@"⏮" target:self action:@selector(previousTrack:)];
-    [self.prevButton setFont:[NSFont systemFontOfSize:17]];
+    self.prevButton = [[[GlassButton alloc] initWithFrame:NSZeroRect] autorelease];
+    self.prevButton.emoji = @"⏮";
+    self.prevButton.toolTip = @"Previous track";
+    self.prevButton.target = self;
+    self.prevButton.action = @selector(previousTrack:);
     [self.controlPanel addSubview:self.prevButton];
 
-    self.playPauseButton = [GlassButton circularButtonWithTitle:@"▶" size:DEFAULT_PLAY_BTN_SIZE target:self action:@selector(togglePlayPause:)];
-    [self.playPauseButton setFont:[NSFont systemFontOfSize:18]];
-    [self.playPauseButton setActive:YES animated:NO];
-    [self.playPauseButton setActiveTint:[NSColor controlAccentColor]];
+    self.playPauseButton = [[[GlassButton alloc] initWithFrame:NSZeroRect] autorelease];
+    self.playPauseButton.emoji = @"▶";
+    self.playPauseButton.toolTip = @"Play / Pause";
+    self.playPauseButton.target = self;
+    self.playPauseButton.action = @selector(togglePlayPause:);
+    self.playPauseButton.active = YES;
     [self.controlPanel addSubview:self.playPauseButton];
 
-    self.nextButton = [GlassButton pillButtonWithTitle:@"⏭" target:self action:@selector(nextTrack:)];
-    [self.nextButton setFont:[NSFont systemFontOfSize:17]];
+    self.nextButton = [[[GlassButton alloc] initWithFrame:NSZeroRect] autorelease];
+    self.nextButton.emoji = @"⏭";
+    self.nextButton.toolTip = @"Next track";
+    self.nextButton.target = self;
+    self.nextButton.action = @selector(nextTrack:);
     [self.controlPanel addSubview:self.nextButton];
 
-    self.repeatButton = [GlassButton pillButtonWithTitle:@"🔁" target:self action:@selector(cycleRepeatMode:)];
-    [self.repeatButton setFont:[NSFont systemFontOfSize:13]];
+    self.repeatButton = [[[GlassButton alloc] initWithFrame:NSZeroRect] autorelease];
+    self.repeatButton.emoji = @"🔁";
+    self.repeatButton.toolTip = @"Repeat";
+    self.repeatButton.target = self;
+    self.repeatButton.action = @selector(cycleRepeatMode:);
     [self.controlPanel addSubview:self.repeatButton];
 
     // Volume (icon + slider)
@@ -1036,61 +766,36 @@ static NSArray<Track *> *TracksFromURLs(NSArray<NSURL *> *urls) {
     [self.controlPanel addSubview:self.volumeSlider];
 
     // ────────────────────────────────────────────
-    // PLAYLIST PANEL (top — fills remaining space)
+    // TRACK LIST PANEL (top — fills remaining space)
     // ────────────────────────────────────────────
-    self.playlistPanel = [[NSVisualEffectView alloc] initWithFrame:NSZeroRect];
-    [self.playlistPanel setMaterial:NSVisualEffectMaterialMenu];
-    [self.playlistPanel setState:NSVisualEffectStateActive];
-    [self.playlistPanel setBlendingMode:NSVisualEffectBlendingModeWithinWindow];
-    [self.playlistPanel setWantsLayer:YES];
-    self.playlistPanel.layer.cornerRadius = PANEL_CORNER_RADIUS;
-    self.playlistPanel.layer.masksToBounds = YES;
-    [bg addSubview:self.playlistPanel];
+    self.trackListPanel = [[NSVisualEffectView alloc] initWithFrame:NSZeroRect];
+    [self.trackListPanel setMaterial:NSVisualEffectMaterialMenu];
+    [self.trackListPanel setState:NSVisualEffectStateActive];
+    [self.trackListPanel setBlendingMode:NSVisualEffectBlendingModeWithinWindow];
+    [self.trackListPanel setWantsLayer:YES];
+    self.trackListPanel.layer.cornerRadius = PANEL_CORNER_RADIUS;
+    self.trackListPanel.layer.masksToBounds = YES;
+    [bg addSubview:self.trackListPanel];
 
-    self.tableScrollView = [[NSScrollView alloc] initWithFrame:NSZeroRect];
-    [self.tableScrollView setHasVerticalScroller:YES];
-    [self.tableScrollView setAutohidesScrollers:YES];
-    [self.tableScrollView setScrollerStyle:NSScrollerStyleOverlay];
-    [self.tableScrollView setDrawsBackground:NO];
-    [self.tableScrollView setBorderType:NSNoBorder];
-    [[self.tableScrollView contentView] setDrawsBackground:NO];
-    [[self.tableScrollView contentView] setBackgroundColor:[NSColor clearColor]];
-    [self.playlistPanel addSubview:self.tableScrollView];
+    self.trackListScrollView = [[NSScrollView alloc] initWithFrame:NSZeroRect];
+    [self.trackListScrollView setHasVerticalScroller:YES];
+    [self.trackListScrollView setAutohidesScrollers:YES];
+    [self.trackListScrollView setScrollerStyle:NSScrollerStyleOverlay];
+    [self.trackListScrollView setDrawsBackground:NO];
+    [self.trackListScrollView setBorderType:NSNoBorder];
+    [[self.trackListScrollView contentView] setDrawsBackground:NO];
+    [[self.trackListScrollView contentView] setBackgroundColor:[NSColor clearColor]];
+    [self.trackListPanel addSubview:self.trackListScrollView];
+    [self.trackListScrollView setAutomaticallyAdjustsContentInsets:NO];
+    [self.trackListScrollView setContentInsets:NSEdgeInsetsMake(0, 0, SCROLL_INSET_BOTTOM, 0)];
 
-    // Scroll view content insets for bottom padding
-    [self.tableScrollView setAutomaticallyAdjustsContentInsets:NO];
-    [self.tableScrollView setContentInsets:NSEdgeInsetsMake(0, 0, SCROLL_INSET_BOTTOM, 0)];
-
-    self.tableView = [[NSTableView alloc] initWithFrame:NSZeroRect];
-    NSTableColumn *col = [[NSTableColumn alloc] initWithIdentifier:@"track"];
-    [col setResizingMask:NSTableColumnAutoresizingMask];
-    CenteredTextFieldCell *cell = [[[CenteredTextFieldCell alloc] init] autorelease];
-    [cell setWraps:NO];
-    [cell setLineBreakMode:NSLineBreakByTruncatingTail];
-    [col setDataCell:cell];
-    [self.tableView addTableColumn:col];
-    [self.tableView setHeaderView:nil];
-    [self.tableView setDataSource:self];
-    [self.tableView setDelegate:self];
-    [self.tableView setRowSizeStyle:NSTableViewRowSizeStyleDefault];
-    [self.tableView setUsesAlternatingRowBackgroundColors:NO];
-    [self.tableView setBackgroundColor:[NSColor clearColor]];
-    [self.tableView setIntercellSpacing:NSMakeSize(0, TABLE_CELL_SPACING)];
-    [self.tableView setSelectionHighlightStyle:NSTableViewSelectionHighlightStyleSourceList];
-    [self.tableView setFocusRingType:NSFocusRingTypeNone];
-    [self.tableView setTarget:self];
-    [self.tableView setDoubleAction:@selector(tableViewDoubleClick:)];
-    [self.tableView registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
-    [self.tableView setDraggingSourceOperationMask:NSDragOperationCopy forLocal:NO];
-    [self.tableView setAllowsColumnReordering:NO];
-    [self.tableView setAllowsColumnResizing:NO];
-    [self.tableScrollView setDocumentView:self.tableView];
-
-    // Placeholder — shown only when list is empty
-    self.placeholderLabel = [self makeLabel:@"Drop audio files here" font:[NSFont systemFontOfSize:13] color:[NSColor secondaryLabelColor]];
-    [self.placeholderLabel setAlignment:NSTextAlignmentCenter];
-    [self.placeholderLabel setHidden:([self.tracks count] > 0)];
-    [[self.tableScrollView contentView] addSubview:self.placeholderLabel];
+    self.trackListView = [[TrackListView alloc] initWithFrame:NSZeroRect];
+    self.trackListView.tracks = self.tracks;
+    self.trackListView.target = self;
+    self.trackListView.action = @selector(trackListClicked:);
+    self.trackListView.placeholderAction = @selector(openFiles:);
+    [self.trackListScrollView setDocumentView:self.trackListView];
+    [self.trackListView reloadData];
 
     // ── Explicit layout callback — fires on every resize ──
     __unsafe_unretained typeof(self) weakSelf = self;
@@ -1148,98 +853,42 @@ static NSArray<Track *> *TracksFromURLs(NSArray<NSURL *> *urls) {
         [self volumeSliderChanged:nil];
         return YES;
     }
-    // Delete (51) — Remove selected track
+    // Cmd+A (0) — Select All in playlist
+    if (keyCode == 0 && ([event modifierFlags] & NSEventModifierFlagCommand)) {
+        [self.trackListView selectAll];
+        return YES;
+    }
+    // Delete (51) — Remove selected tracks
     if (keyCode == 51) {
-        [self removeSelectedTrack];
+        if ([self.trackListView removeSelectedTracks]) {
+            [self trackListDidChange];
+        }
         return YES;
     }
     return NO;
 }
 
-// ── NSTableView Data Source ──
-- (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView {
-    return [self.tracks count];
-}
 
-- (id)tableView:(NSTableView *)tableView objectValueForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row {
-    if (row < 0 || row >= (NSInteger)[self.tracks count]) return nil;
-    Track *t = self.tracks[row];
-    NSString *marker = (row == self.currentIndex) ? @" ▶ " : @"    ";
-    return [NSString stringWithFormat:@"%@%@  —  %@  [%@]",
-            marker, t.title, t.artist, FormatTime(t.duration)];
-}
+// ── TrackListView change callback ──
+- (void)trackListDidChange {
+    BOOL hadTrackRemoved = (self.currentIndex >= (NSInteger)[self.tracks count]);
 
-- (void)tableView:(NSTableView *)tableView willDisplayCell:(id)cell forTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row {
-    if ([cell isKindOfClass:[NSTextFieldCell class]]) {
-        NSTextFieldCell *tc = (NSTextFieldCell *)cell;
-        if (row == self.currentIndex) {
-            [tc setTextColor:[NSColor controlAccentColor]];
-            [tc setFont:[NSFont boldSystemFontOfSize:13]];
-        } else if (row == [tableView selectedRow]) {
-            [tc setTextColor:[NSColor selectedControlTextColor]];
-            [tc setFont:[NSFont systemFontOfSize:13]];
-        } else {
-            [tc setTextColor:[NSColor labelColor]];
-            [tc setFont:[NSFont systemFontOfSize:13]];
-        }
+    if (hadTrackRemoved) {
+        self.currentIndex = [self.tracks count] > 0 ? (NSInteger)[self.tracks count] - 1 : -1;
     }
-}
 
-- (CGFloat)tableView:(NSTableView *)tableView heightOfRow:(NSInteger)row {
-    return TABLE_ROW_HEIGHT;
-}
+    [self.trackListView setCurrentIndex:self.currentIndex];
 
-- (BOOL)tableView:(NSTableView *)tableView shouldEditTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row {
-    return NO; // list is read-only, items can only be removed via Delete key
-}
-
-- (void)tableView:(NSTableView *)tableView didAddRowView:(NSTableRowView *)rowView forRow:(NSInteger)row {
-    // Subtle glass row styling
-    [rowView setEmphasized:NO];
-}
-
-- (NSTableRowView *)tableView:(NSTableView *)tableView rowViewForRow:(NSInteger)row {
-    GlassTableRowView *rowView = [[GlassTableRowView alloc] initWithFrame:NSZeroRect];
-    return rowView;
-}
-
-// ── Drag & Drop (table view) ──
-- (NSDragOperation)tableView:(NSTableView *)tableView
-                validateDrop:(id<NSDraggingInfo>)info
-                 proposedRow:(NSInteger)row
-       proposedDropOperation:(NSTableViewDropOperation)operation {
-    return NSDragOperationCopy;
-}
-
-- (BOOL)tableView:(NSTableView *)tableView
-       acceptDrop:(id<NSDraggingInfo>)info
-              row:(NSInteger)row
-    dropOperation:(NSTableViewDropOperation)operation {
-    NSPasteboard *pb = [info draggingPasteboard];
-    NSArray<NSURL *> *urls = [pb readObjectsForClasses:@[[NSURL class]] options:nil];
-    if ([urls count] == 0) return NO;
-    // Expand directories and filter audio files, then insert at drop row
-    NSMutableArray *audioURLs = [NSMutableArray array];
-    for (NSURL *url in urls) {
-        NSNumber *isDir;
-        [url getResourceValue:&isDir forKey:NSURLIsDirectoryKey error:nil];
-        if ([isDir boolValue]) {
-            NSFileManager *fm = [NSFileManager defaultManager];
-            NSDirectoryEnumerator *en = [fm enumeratorAtURL:url
-                                 includingPropertiesForKeys:nil
-                                                    options:NSDirectoryEnumerationSkipsHiddenFiles
-                                               errorHandler:nil];
-            for (NSURL *child in en) {
-                if (IsAudioURL(child)) [audioURLs addObject:child];
-            }
-        } else if (IsAudioURL(url)) {
-            [audioURLs addObject:url];
-        }
+    // Stop player if current track was removed or list is empty
+    if (self.currentIndex < 0 || hadTrackRemoved) {
+        [self.playerController stop];
     }
-    if ([audioURLs count] == 0) return NO;
-    [self addTracksFromURLs:audioURLs atIndex:row];
-    return YES;
+
+    [self updateControlsEnabled];
+    [self updateNowPlayingUI];
+    [self updatePlayPauseButton];
 }
+
 
 // ── Drag & Drop acceptance helper ──
 - (void)acceptDroppedURLs:(NSArray<NSURL *> *)urls {
@@ -1278,9 +927,9 @@ static NSArray<Track *> *TracksFromURLs(NSArray<NSURL *> *urls) {
     // Update shuffled order
     if (self.shuffle) [self rebuildShuffleOrder];
 
-    [self.tableView reloadData];
+    [self.trackListView reloadData];
+    [self.trackListView setCurrentIndex:self.currentIndex];
     [self updateControlsEnabled];
-    [self.placeholderLabel setHidden:([self.tracks count] > 0)];
 
     // Auto-play if nothing is playing
     if (self.currentIndex < 0 && [self.tracks count] > 0) {
@@ -1317,7 +966,8 @@ static NSArray<Track *> *TracksFromURLs(NSArray<NSURL *> *urls) {
     [self updateSeekUI];
     [self updatePlayPauseButton];
     [self updateNowPlayingInfo];
-    [self.tableView reloadData];
+    [self.trackListView reloadData];
+    [self.trackListView setCurrentIndex:self.currentIndex];
 }
 
 - (void)trackDidFinish {
@@ -1357,7 +1007,8 @@ static NSArray<Track *> *TracksFromURLs(NSArray<NSURL *> *urls) {
                 [self.playerController stop];
                 [self updateNowPlayingUI];
                 [self updatePlayPauseButton];
-                [self.tableView reloadData];
+                [self.trackListView reloadData];
+                [self.trackListView setCurrentIndex:-1];
                 return;
             }
         }
@@ -1499,52 +1150,20 @@ static NSArray<Track *> *TracksFromURLs(NSArray<NSURL *> *urls) {
     [self.playerController setVolume:vol];
 }
 
-- (void)tableViewDoubleClick:(id)sender {
-    NSInteger row = [self.tableView clickedRow];
+// ── TrackListView row click ──
+- (void)trackListClicked:(NSNumber *)rowObj {
+    NSInteger row = [rowObj integerValue];
     if (row >= 0 && row < (NSInteger)[self.tracks count]) {
         [self playTrackAtIndex:row];
     }
 }
 
-- (void)removeSelectedTrack {
-    NSInteger row = [self.tableView selectedRow];
-    if (row < 0 || row >= (NSInteger)[self.tracks count]) return;
-
-    BOOL wasCurrent = (row == self.currentIndex);
-
-    [self.tracks removeObjectAtIndex:row];
-
-    // Adjust indices
-    if (wasCurrent) {
-        [self.playerController stop];
-        self.currentIndex = -1;
-        if (row < (NSInteger)[self.tracks count]) {
-            [self playTrackAtIndex:row];
-        } else if ([self.tracks count] > 0) {
-            [self playTrackAtIndex:(NSInteger)[self.tracks count] - 1];
-        } else {
-            [self updateNowPlayingUI];
-        }
-    } else if (row < self.currentIndex) {
-        self.currentIndex--;
-    }
-
-    if (self.shuffle) [self rebuildShuffleOrder];
-    [self.tableView reloadData];
-    [self updateControlsEnabled];
-    [self.placeholderLabel setHidden:([self.tracks count] > 0)];
-}
-
-- (void)updatePlaceholderVisibility {
-    [self.placeholderLabel setHidden:([self.tracks count] > 0)];
-}
-
 // ── UI Updates ──
 - (void)updatePlayPauseButton {
     if (self.playerController.isPlaying) {
-        [self.playPauseButton setTitle:@"⏸"];
+        self.playPauseButton.emoji = @"⏸";
     } else {
-        [self.playPauseButton setTitle:@"▶"];
+        self.playPauseButton.emoji = @"▶";
     }
 }
 
@@ -1575,18 +1194,12 @@ static NSArray<Track *> *TracksFromURLs(NSArray<NSURL *> *urls) {
 }
 
 - (void)updateShuffleRepeatUI {
-    // Shuffle
-    [self.shuffleButton setActive:self.shuffle];
-    [self.shuffleButton setActiveTint:[NSColor controlAccentColor]];
-    [self.shuffleButton updateGlassAppearance];
-    [self.shuffleButton setTitle:@"🔀"];
+    self.shuffleButton.active = self.shuffle;
+    self.shuffleButton.emoji = @"🔀";
 
-    // Repeat
-    NSString *repChar = self.repeatMode == 0 ? @"🔁" : (self.repeatMode == 1 ? @"🔁" : @"🔂");
-    [self.repeatButton setActive:(self.repeatMode > 0)];
-    [self.repeatButton setActiveTint:[NSColor controlAccentColor]];
-    [self.repeatButton updateGlassAppearance];
-    [self.repeatButton setTitle:repChar];
+    NSString *repEmoji = self.repeatMode == 0 ? @"🔁" : (self.repeatMode == 1 ? @"🔁" : @"🔂");
+    self.repeatButton.active = (self.repeatMode > 0);
+    self.repeatButton.emoji = repEmoji;
 }
 
 - (void)updateControlsEnabled {

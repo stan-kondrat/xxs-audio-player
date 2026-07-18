@@ -10,7 +10,7 @@ all: build run
 
 build: $(APP_BUNDLE)
 
-SOURCES = main.m ID3Metadata.m
+SOURCES = main.m ID3Metadata.m Track.m TrackRowView.m TrackListView.m GlassButton.m
 
 $(APP_BUNDLE): $(SOURCES) Info.plist $(ICON_FILE)
 	mkdir -p "$(APP_BUNDLE)/Contents/MacOS"
@@ -47,6 +47,7 @@ clean:
 	rm -rf $(BUILD_DIR) build-arm64 build-x86_64
 
 run: $(APP_BUNDLE)
+	-@osascript -e 'tell application "$(TARGET)" to quit' 2>/dev/null; sleep 0.2
 	open "$(APP_BUNDLE)"
 
 .PHONY: all build build-arm64 build-x86_64 clean run
